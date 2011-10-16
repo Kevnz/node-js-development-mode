@@ -33,9 +33,7 @@ pause
 Make sure you've added path to the "node.exe" file to your system "Path" variable.
 (right click "My computer", Properties, blah blah blah, Evironmental variables, find "Path" there, click "Edit", add ";" and path to "node.exe" without trailing slash, "OK")
 
-Known issue: you'll get "Error: write EINVAL", if you try to output to console right after the application starts.
-But, if you output to console anything while, say, responding to a request, that's ok and is gonna work.
-Just don't output to console while initializing your application.
+Known issue: you'll get "Error: write EINVAL", if you try to output to console (or to standard output, etc).
  
 This script was adapted for Windows by Nikolay Kuchumov (kuchumovn@gmail.com).
 The script was initially created by DracoBlue (dracoblue.net) for Linux platform, and is part of the Spludo Framework.

@@ -42,9 +42,7 @@
  * Make sure you've added path to the "node.exe" file to your system "Path" variable.
  * (right click "My computer", Properties, blah blah blah, Evironmental variables, find "Path" there, click "Edit", add ";" and path to "node.exe" without trailing slash, "OK")
  *
- * Known issue: you'll get "Error: write EINVAL", if you try to output to console right after the application starts.
- * But, if you output to console anything while, say, responding to a request, that's ok and is gonna work.
- * Just don't output to console while initializing your application.
+ * Known issue: you'll get "Error: write EINVAL", if you try to output to console (or to standard output, etc).
  *
  * This script was adapted for Windows by Nikolay Kuchumov (kuchumovn@gmail.com).
  * The script was initially created by DracoBlue (dracoblue.net) for Linux platform, and is part of the Spludo Framework.
@@ -68,7 +66,10 @@ var sys = require("util");
 function parse_options()
 {
 		var index
-		var options = {}
+		var options = 
+		{
+			watched_file_paths: ['*.js', '*.coffee']
+		}
 		
 		index = process.ARGV.indexOf('--main-file')
 		if (index >= 0)
@@ -82,6 +83,10 @@ function parse_options()
 		if (index >= 0)
 			options.watched_file_paths = eval(process.ARGV[index + 1])
 			
+		index = process.ARGV.indexOf('--mute')
+		if (index >= 0)
+			options.mute = true
+			
 		//console.log(options)
 		return options
 }
@@ -94,8 +99,6 @@ dev_server = {
 
     restarting: false,
 	
-	watched_file_paths: ['*.js', '*.coffee'],
-	
 	file_path_regular_expression: /^[\x00-\x7F]*$/,
 
     "restart": function() {
@@ -107,16 +110,13 @@ dev_server = {
     "start": function() {
         var that = this;
 		
-		var options = parse_options()
-
-		if (options.watched_file_paths)
-			this.watched_file_paths = options.watched_file_paths
+		this.options = parse_options()
 		
 		var arguments
-		if (options.coffee_script_path)
-			arguments = [options.coffee_script_path, options.main_file_path]
+		if (this.options.coffee_script_path)
+			arguments = [this.options.coffee_script_path, this.options.main_file_path]
 		else
-			arguments = [options.main_file_path]
+			arguments = [this.options.main_file_path]
 
         sys.debug('DEVSERVER: Starting server');
         that.watchFiles();
@@ -124,13 +124,13 @@ dev_server = {
         this.process = child_process.spawn("node", arguments);
 
         this.process.stdout.addListener('data', function (data) {
-			sys.print(data);
-            process.stdout.write(data);
-        });
+			sys.print(data)
+            process.stdout.write(data)
+        })
 
         this.process.stderr.addListener('data', function (data) {
-            sys.print(data);
-        });
+            sys.print(data)
+        })
 
         this.process.addListener('exit', function (code) {
             sys.debug('DEVSERVER: Child process exited: ' + code);
@@ -147,7 +147,7 @@ dev_server = {
         var that = this;
 
 		// get watched file list
-        child_process.exec('dir /s /b ' + this.watched_file_paths.join(' '), function(error, stdout, stderr) {
+        child_process.exec('dir /s /b ' + this.options.watched_file_paths.join(' '), function(error, stdout, stderr) {
 			// windows line terminator
             var files = stdout.trim().split("\r\n");
 
@@ -157,7 +157,8 @@ dev_server = {
 				//console.log(file)
 				if (!that.file_path_regular_expression.test(file))
 				{
-					console.error('File path "' + file + '" is unsupported. Skipping.')
+					if (!that.options.mute)
+						console.error('File path "' + file + '" is unsupported. Skipping.')
 					return
 				}
 				
