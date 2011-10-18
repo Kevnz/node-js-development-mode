@@ -59,9 +59,9 @@
  * Licensed under the terms of MIT License.
  */
  
-var child_process = require('child_process');
-var fs = require("fs");
-var sys = require("util");
+var child_process = require('child_process')
+var fs = require("fs")
+var sys = require("util")
 
 function parse_options()
 {
@@ -101,14 +101,15 @@ dev_server = {
 	
 	file_path_regular_expression: /^[\x00-\x7F]*$/,
 
-    "restart": function() {
-        this.restarting = true;
-        sys.debug('DEVSERVER: Stopping server for restart');
-        this.process.kill();
+    "restart": function() 
+	{
+		this.restarting = true
+        //sys.debug('DEVSERVER: Stopping server for restart')
+        this.process.kill()
     },
 
     "start": function() {
-        var that = this;
+        var that = this
 		
 		this.options = parse_options()
 		
@@ -118,8 +119,8 @@ dev_server = {
 		else
 			arguments = [this.options.main_file_path]
 
-        sys.debug('DEVSERVER: Starting server');
-        that.watchFiles();
+        sys.debug('DEVSERVER: Starting server')
+        that.watchFiles()
 		
         this.process = child_process.spawn("node", arguments);
 
@@ -133,14 +134,24 @@ dev_server = {
         })
 
         this.process.addListener('exit', function (code) {
-            sys.debug('DEVSERVER: Child process exited: ' + code);
-            this.process = null;
-            if (that.restarting) {
-                that.restarting = true;
-                //that.unwatchFiles();
-                that.start();
-            }
-        });
+			if (!that.restarting)
+				sys.debug('DEVSERVER: Child process exited: ' + code)
+				
+            that.process = null
+			that.start()
+        })
+		
+		if (this.restarting)
+		{
+			this.restarting = false
+		
+			if (this.needs_extra_restart)
+			{
+				sys.debug('DEVSERVER: Files changed while restarting. Restarting again')
+				this.needs_extra_restart = false
+				this.restart()
+			}
+		}
     },
 
     "watchFiles": function() {
@@ -154,6 +165,9 @@ dev_server = {
 			// watch each file for changes
 			files.forEach(function(file) 
 			{
+				if (that.files.indexOf(file) >= 0)
+					return
+					
 				//console.log(file)
 				if (!that.file_path_regular_expression.test(file))
 				{
@@ -163,18 +177,25 @@ dev_server = {
 				}
 				
                 //file = file.replace(/\\/g, '\\\\')
-				that.files.push(file);
+				that.files.push(file)
 				
                 fs.watch(file,  function(action, fileName) {
 					//console.log (action)
-					if (action == 'change') {
-                        sys.debug('DEVSERVER: Restarting because of changed file at ' + file);
-                        dev_server.restart();
+					if (action == 'change') 
+					{
+						if (that.restarting)
+						{
+							that.needs_extra_restart = true
+							return
+						}
+							
+                        sys.debug('DEVSERVER: Restarting because of changed file at ' + file)
+                        dev_server.restart()
                     }
-                });
-            });
-        });
+                })
+            })
+        })
    }
 }
 
-dev_server.start();
+dev_server.start()
