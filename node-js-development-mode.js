@@ -163,7 +163,7 @@ dev_server = {
         var that = this;
 
 		// get watched file list
-        child_process.exec('cmd /C dir /s /b *.js' + this.options.watched_file_paths.join(' '), function(error, stdout, stderr) 
+        child_process.exec('dir /s /b *.js' + this.options.watched_file_paths.join(' '), function(error, stdout, stderr) 
 		{
 			if (error)
 			{
