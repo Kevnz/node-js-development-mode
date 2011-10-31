@@ -23,26 +23,28 @@
  * Thanks to the Node community for helping me to make it work.
  *
  * Running:
- * node "c:\work\node-js-development-mode.js" --main-file "code\web\main.js"
+ * node "c:\work\node-js-development-mode.js" --main-file "code\web\main.js" --mute
  * or
- * node "c:\work\node-js-development-mode.js" --main-file "code\web\main.coffee" --coffee-script "c:\work\node\coffee-script\bin\coffee"
+ * node "c:\work\node-js-development-mode.js" --main-file "code\web\main.coffee" --coffee-script "c:\work\node\coffee-script\bin\coffee" --mute
  *
  * You can also specify files, you want to watch, manually:
  *
- * node "c:\work\node-js-development-mode.js" --main-file "code\web\main.js" --files-to-watch "['*.js', '*.coffee']"
+ * node "c:\work\node-js-development-mode.js" --main-file "code\web\main.js" --files-to-watch "['*.js', '*.coffee']" --mute
  *
  * I, personally, run Node.js with this script (I just double click it in Explorer)
  * "run node.js.bat":
  *
  * @echo off
+ * rem use utf-8 encoding in console output:
+ * chcp 65001
  * title node.js
- * node "c:\work\node-js-development-mode\node-js-development-mode.js" --main-file code/web/main.coffee --coffee-script c:\work\node\coffee-script\bin\coffee
+ * node "c:\work\node-js-development-mode\node-js-development-mode.js" --main-file code/web/main.coffee --coffee-script c:\work\node\coffee-script\bin\coffee --mute
  * pause
+ *
+ * Known gotcha: you must run your *.bat file from the root directory of your app - from there on the "dir" command will search for the files.
  *
  * Make sure you've added path to the "node.exe" file to your system "Path" variable.
  * (right click "My computer", Properties, blah blah blah, Evironmental variables, find "Path" there, click "Edit", add ";" and path to "node.exe" without trailing slash, "OK")
- *
- * Known issue: you'll get "Error: write EINVAL", if you try to output to console (or to standard output, etc).
  *
  * This script was adapted for Windows by Nikolay Kuchumov (kuchumovn@gmail.com).
  * The script was initially created by DracoBlue (dracoblue.net) for Linux platform, and is part of the Spludo Framework.
@@ -71,26 +73,26 @@ function parse_options()
 			watched_file_paths: ['*.js', '*.coffee']
 		}
 		
-		index = process.ARGV.indexOf('--main-file')
+		index = process.argv.indexOf('--main-file')
 		if (index >= 0)
-			options.main_file_path = process.ARGV[index + 1]
+			options.main_file_path = process.argv[index + 1]
 		
-		index = process.ARGV.indexOf('--coffee-script')
+		index = process.argv.indexOf('--coffee-script')
 		if (index >= 0)
-			options.coffee_script_path = process.ARGV[index + 1]
+			options.coffee_script_path = process.argv[index + 1]
 			
-		index = process.ARGV.indexOf('--files-to-watch')
+		index = process.argv.indexOf('--files-to-watch')
 		if (index >= 0)
-			options.watched_file_paths = eval(process.ARGV[index + 1])
+			options.watched_file_paths = eval(process.argv[index + 1])
 			
-		index = process.ARGV.indexOf('--mute')
+		index = process.argv.indexOf('--mute')
 		if (index >= 0)
 			options.mute = true
 			
 		//console.log(options)
 		return options
 }
-
+		
 dev_server = {
 
     process: null,
@@ -120,20 +122,23 @@ dev_server = {
 			arguments = [this.options.main_file_path]
 
         sys.debug('DEVSERVER: Starting server')
-        that.watchFiles()
+
+		that.watchFiles()
 		
         this.process = child_process.spawn("node", arguments);
 
-        this.process.stdout.addListener('data', function (data) {
-			sys.print(data)
+        this.process.stdout.addListener('data', function (data) 
+		{
             process.stdout.write(data)
         })
 
-        this.process.stderr.addListener('data', function (data) {
-            sys.print(data)
+        this.process.stderr.addListener('data', function (data) 
+		{
+            process.stderr.write(data)
         })
 
-        this.process.addListener('exit', function (code) {
+        this.process.addListener('exit', function (code) 
+		{
 			if (!that.restarting)
 				sys.debug('DEVSERVER: Child process exited: ' + code)
 				
@@ -158,7 +163,15 @@ dev_server = {
         var that = this;
 
 		// get watched file list
-        child_process.exec('dir /s /b ' + this.options.watched_file_paths.join(' '), function(error, stdout, stderr) {
+        child_process.exec('cmd /C dir /s /b *.js' + this.options.watched_file_paths.join(' '), function(error, stdout, stderr) 
+		{
+			if (error)
+			{
+				sys.error('DEVSERVER: Server start failed')
+				console.error(stderr)
+				return
+			}
+		
 			// windows line terminator
             var files = stdout.trim().split("\r\n");
 
@@ -179,7 +192,8 @@ dev_server = {
                 //file = file.replace(/\\/g, '\\\\')
 				that.files.push(file)
 				
-                fs.watch(file,  function(action, fileName) {
+                fs.watch(file,  function(action, fileName) 
+				{
 					//console.log (action)
 					if (action == 'change') 
 					{
