@@ -10,17 +10,17 @@ then go to Explorer and run "start node.js.bat",
 and then go to your web browser and finally hit "Refresh"
 just to find out if that modified line of code works.
 
-This script fixes that drawback, and is used to run Node.js in "development" mode.
+This script fixes that drawback, and is used to run Node.js in "development" mode (works since version 0.5.10 of Node.js).
 Thanks to the Node community for helping me to make it work.
 
 Running:
-node "c:\work\node-js-development-mode.js" --main-file "code\web\main.js" --mute
+node "c:\work\node-js-development-mode.js" --main-file "code\web\main.js"
 or
-node "c:\work\node-js-development-mode.js" --main-file "code\web\main.coffee" --coffee-script "c:\work\node\coffee-script\bin\coffee" --mute
+node "c:\work\node-js-development-mode.js" --main-file "code\web\main.coffee" --coffee-script "c:\work\node\coffee-script\bin\coffee"
 
-You can also specify files, you want to watch, manually:
+You can also specify files, you want to watch (and to ignore), manually (** and * are supported):
 
-node "c:\work\node-js-development-mode.js" --main-file "code\web\main.js" --files-to-watch "['*.js', '*.coffee']" --mute
+node "c:\work\node-js-development-mode.js" --main-file "code\web\main.js" --watch "['*.js', '*.coffee']"
 
 I, personally, run Node.js with this script (I just double click it in Explorer)
 "run node.js.bat":
@@ -29,7 +29,7 @@ I, personally, run Node.js with this script (I just double click it in Explorer)
 rem use utf-8 encoding in console output:
 chcp 65001
 title node.js
-node "c:\work\node-js-development-mode\node-js-development-mode.js" --main-file code/web/main.coffee --coffee-script c:\work\node\coffee-script\bin\coffee --mute
+node "c:\work\node-js-development-mode\node-js-development-mode.js" --main-file code/web/main.coffee --coffee-script c:\work\node\coffee-script\bin\coffee --watch "['code/**/*.js', 'code/**/*.coffee']"
 pause
 
 Known gotcha: you must run your *.bat file from the root directory of your app - from there on the "dir" command will search for the files.
