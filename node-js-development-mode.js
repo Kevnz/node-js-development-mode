@@ -76,11 +76,12 @@ dev_server =
 		
 		this.options = parse_options()
 		
-		if (!path.existsSync(this.options.coffee_script_path))
-			if (path.existsSync(this.to_relative_path(this.options.coffee_script_path)))
-				this.options.coffee_script_path = this.to_relative_path(this.options.coffee_script_path)
-			else
-				throw 'Coffee-script not found: ' + this.options.coffee_script_path
+		if (this.options.coffee_script_path)
+			if (!path.existsSync(this.options.coffee_script_path))
+				if (path.existsSync(this.to_relative_path(this.options.coffee_script_path)))
+					this.options.coffee_script_path = this.to_relative_path(this.options.coffee_script_path)
+				else
+					throw 'Coffee-script not found: ' + this.options.coffee_script_path
 
 		/*
 		var i = 0
