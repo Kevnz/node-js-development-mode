@@ -1,69 +1,14 @@
 /*
- * This file is part of the Spludo Framework.
- * Copyright (c) 2009-2010 DracoBlue, http://dracoblue.net/
- *
- * Licensed under the terms of MIT License. For the full copyright and license
- * information, please see the LICENSE file in the root folder.
- */
-
-/*
- * Node.js is a good peice of software, but it lacks a very critical feature: a "development" mode.
- * In "development" mode, if you modify your application code, it get applied "on the fly",
- * without the need to restart the application server.
- *
- * Development for Node.js under Windows, thus, has been a pain.
- * You had to go and change a line of code,
- * then go to the Node console window,
- * then close it by clicking the cross icon,
- * then go to Explorer and run "start node.js.bat",
- * and then go to your web browser and finally hit "Refresh"
- * just to find out if that modified line of code works.
- *
- * This script fixes that drawback, and is used to run Node.js in "development" mode (works since version 0.5.10 of Node.js).
- * Thanks to the Node community for helping me to make it work.
- *
- * Running:
- * node "c:\work\node-js-development-mode.js" --main-file "code\web\main.js"
- * or
- * node "c:\work\node-js-development-mode.js" --main-file "code\web\main.coffee" --coffee-script "c:\work\node\coffee-script\bin\coffee"
- *
- * You can also specify files, you want to watch (and to ignore), manually (** and * are supported):
- *
- * node "c:\work\node-js-development-mode.js" --main-file "code\web\main.js" --watch "['*.js', '*.coffee']"
- *
- * I, personally, run Node.js with this script (I just double click it in Explorer)
- * "run node.js.bat":
- *
- * @echo off
- * rem use utf-8 encoding in console output:
- * chcp 65001
- * title node.js
- * node "c:\work\node-js-development-mode\node-js-development-mode.js" --main-file code/web/main.coffee --coffee-script c:\work\node\coffee-script\bin\coffee --watch "['codeSLASH**SLASH*.js', 'codeSLASH**SLASH*.coffee']"
- * pause
- *
- * Known gotcha: you must run your *.bat file from the root directory of your app - from there on the "dir" command will search for the files.
- *
- * Make sure you've added path to the "node.exe" file to your system "Path" variable.
- * (right click "My computer", Properties, blah blah blah, Evironmental variables, find "Path" there, click "Edit", add ";" and path to "node.exe" without trailing slash, "OK")
- *
- * This script was adapted for Windows by Nikolay Kuchumov (kuchumovn@gmail.com).
- * The script was initially created by DracoBlue (dracoblue.net) for Linux platform, and is part of the Spludo Framework.
- * Then I came by it on the internets:
- * http://dracoblue.net/dev/hot-reload-for-nodejs-servers-on-code-change/173/
- * and adapted it for my OS.
- * (It's windoze, cause I don't have money to buy a Mac. If you'd like to assist me in buying a Mac, just email me)
- *
- * You might want to check out
- * https://github.com/kuchumovn/node-js-development-mode
- * to issue an error report, or to request a feature, or to just get a new version.
- *
- * script version: 1.0.0
- * Licensed under the terms of MIT License.
+ * Node.js development mode script.
+ * Author: github.com/kuchumovn
+ * Make sure you've read the readme: github.com/kuchumovn/node-js-development-mode
+ * Everything is explained there.
  */
  
 var child_process = require('child_process')
 var fs = require("fs")
 var sys = require("util")
+var path = require("path")
 
 var debug_mode = true
 var separator = '/'
@@ -74,7 +19,8 @@ function parse_options()
 	var options = 
 	{
 		watched_paths: ['*.js', '*.coffee'],
-		ignored_paths: []
+		ignored_paths: [],
+		project_directory: '.'
 	}
 	
 	index = process.argv.indexOf('--main-file')
@@ -93,10 +39,14 @@ function parse_options()
 	if (index >= 0)
 		options.ignored_paths = eval(process.argv[index + 1])
 		
+	index = process.argv.indexOf('--project_directory')
+	if (index >= 0)
+		options.project_directory = process.argv[index + 1]
+		
 	index = process.argv.indexOf('--debug')
 	if (index >= 0)
 		debug_mode = true
-		
+			
 	//console.log(options)
 	return options
 }
@@ -108,31 +58,48 @@ dev_server =
     files: [],
 
     restarting: false,
-	
-	//file_path_regular_expression: /^[\x00-\x7F]*$/,
 
     restart: function() 
 	{
 		this.restarting = true
-        //debug('DEVSERVER: Stopping server for restart')
         this.process.kill()
     },
 
+	to_relative_path: function(in_project_path)
+	{
+		return this.options.project_directory + '/' + in_project_path
+	},
+	
     start: function() 
 	{
         var that = this
 		
 		this.options = parse_options()
 		
+		if (!path.existsSync(this.options.coffee_script_path))
+			if (path.existsSync(this.to_relative_path(this.options.coffee_script_path)))
+				this.options.coffee_script_path = this.to_relative_path(this.options.coffee_script_path)
+			else
+				throw 'Coffee-script not found: ' + this.options.coffee_script_path
+
+		/*
+		var i = 0
+		while (i < this.options.watched_paths.length)
+		{
+			this.options.watched_paths[i] = this.to_relative_path(this.options.watched_paths[i])
+			i++
+		}
+		*/
+		
 		var arguments
 		if (this.options.coffee_script_path)
-			arguments = [this.options.coffee_script_path, this.options.main_file_path]
+			arguments = [this.options.coffee_script_path, this.to_relative_path(this.options.main_file_path)]
 		else
-			arguments = [this.options.main_file_path]
+			arguments = [this.to_relative_path(this.options.main_file_path)]
 
         debug('DEVSERVER: Starting server')
 
-		that.watch_paths()
+		this.watch_paths()
 		
         this.process = child_process.spawn("node", arguments);
 
@@ -176,33 +143,32 @@ dev_server =
 	
 		fs.watch(file, function(action, fileName) 
 		{
-			//console.log (action)
-			if (action === 'change') 
+			if (action !== 'change') 
+				return
+				
+			if (that.restarting)
 			{
-				if (that.restarting)
-				{
-					that.needs_extra_restart = true
-					return
-				}
-					
-				debug('DEVSERVER: Restarting because of changed file at ' + file)
-				dev_server.restart()
+				that.needs_extra_restart = true
+				return
 			}
+				
+			debug('DEVSERVER: Restarting because of changed file at ' + file)
+			dev_server.restart()
 		})
 	},
 
 	normalize_path: function(path)
 	{
-		return path.replace(process.cwd(), '').substring(1)
+		return path.replace(this.options.project_directory, '').substring(1)
 	},
 	
     watch_paths: function() 
 	{
         var that = this
 
-		find_all_files(process.cwd(), function(file) 
+		find_all_files(this.options.project_directory, function(file)  // process.cwd()
 		{
-			file = that.normalize_path(file)
+			//file = that.normalize_path(file)
 			
 			// if already processed this file - return
 			if (that.files.indexOf(file) >= 0)
@@ -211,53 +177,17 @@ dev_server =
 			that.files.push(file)
 			
 			// new file detected
-
+			
 			// if doesn't match pattern - return
-			if (!Path_matcher.matches(file, that.options.watched_paths))
+			if (!Path_matcher.matches(that.normalize_path(file), that.options.watched_paths))
 				return
 				
 			// if is ignored - return
-			if (Path_matcher.matches(file, that.options.ignored_paths))
+			if (Path_matcher.matches(that.normalize_path(file), that.options.ignored_paths))
 				return
-		
+			
 			that.watch_file(file)
 		})
-	
-		/*
-		// get watched file list
-        child_process.exec('dir /s /b ' + this.options.watched_file_paths.join(' '), function(error, stdout, stderr) 
-		{
-			if (error)
-			{
-				error('DEVSERVER: Server start failed')
-				console.error(stderr)
-				return
-			}
-		
-			// windows line terminator
-            var files = stdout.trim().split("\r\n");
-
-			// watch each file for changes
-			files.forEach(function(file) 
-			{
-				if (that.files.indexOf(file) >= 0)
-					return
-					
-				//console.log(file)
-				if (!that.file_path_regular_expression.test(file))
-				{
-					//if (!that.options.mute)
-					error('File path "' + file + '" is unsupported. Skipping.')
-					return
-				}
-				
-                //file = file.replace(/\\/g, '\\\\')
-				that.files.push(file)
-				
-				that.watch_file(file)
-            })
-        })
-		*/
    }
 }
 
@@ -279,28 +209,12 @@ function info(message)
 
 function find_all_files(path, callback) 
 {
-	fs.stat(path, function(error, stats)
+	if (fs.statSync(path).isFile())
+		return callback(path)
+	
+	fs.readdirSync(path).forEach(function(file_name) 
 	{
-		if (error)
-			return show_error('Failed to retrieve stats for path: ' + path)
-		
-		if (stats.isDirectory())
-		{
-			fs.readdir(path, function(error, file_names) 
-			{
-				if (error)
-					return show_error('Failed to read directory: ' + path)
-				
-				file_names.forEach(function(file_name) 
-				{
-					find_all_files(path + '/' + file_name, callback)
-				})
-			})
-			return
-		}
-		
-		//if (path.match(fileExtensionPattern))
-		callback(path)
+		find_all_files(path + '/' + file_name, callback)
 	})
 }
 
