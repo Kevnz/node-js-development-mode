@@ -29,16 +29,29 @@ By default, this directory is '.', but you can change it via "--project_director
 ** means any number of folders, including no folders at all, so '**/test.js' matches 'test.js', 'test/test.js' and 'test/test/test.js'.
 * means any number of characters (in folder or file name), but at least one character must be present. So, '*hat.js' matches 'that.js', but doesn't match 'hat.js' and 'test/that.js'.
 
-I, personally, run Node.js with this script (I just double click it in Explorer)
+You can also pass options to your Node.js application using the --options key.
+I pass json options like this: --options "{ \"server\": \"home\" }"
+And then in you Node.js application:
+
+function get_launch_options()
+{
+	var index = process.argv.indexOf('options')
+	if (index >= 0)
+		return JSON.parse(process.argv[index + 1])
+}
+
+console.log(get_launch_options()) // { server: 'home' }
+
+My use case.
+
+I, personally, run Node.js with this script (I just double click it in Explorer), which is placed in the root directory of my project.
 "run node.js.bat":
 
 @echo off
 title node.js
 rem use utf-8 encoding in console output:
 chcp 65001
-rem make this directory current
-cd /d "%~dp0"
-node "c:/work/node-js-development-mode/node-js-development-mode.js" --main-file code/web/main.coffee --coffee-script "node_modules/coffee-script/bin/coffee" --watch "['code/**/*.js', 'code/**/*.coffee']" --project_directory ".."
+node "c:/work/node-js-development-mode/node-js-development-mode.js" --main-file code/web/main.coffee --coffee-script "node_modules/coffee-script/bin/coffee" --watch "['code/**/*.js', 'code/**/*.coffee']" --options "{ \"server\": \"home\" }"
 pause
 
 Remember to pass the "project_directory" argument if you are running this batch file not from the root folder of your project: all matching patterns are applied relative to the root project folder.

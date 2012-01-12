@@ -46,8 +46,11 @@ function parse_options()
 	index = process.argv.indexOf('--debug')
 	if (index >= 0)
 		debug_mode = true
-			
-	//console.log(options)
+		
+	index = process.argv.indexOf('--options')
+	if (index >= 0)
+		options.options = process.argv[index + 1]
+		
 	return options
 }
 		
@@ -83,21 +86,18 @@ dev_server =
 				else
 					throw 'Coffee-script not found: ' + this.options.coffee_script_path
 
-		/*
-		var i = 0
-		while (i < this.options.watched_paths.length)
-		{
-			this.options.watched_paths[i] = this.to_relative_path(this.options.watched_paths[i])
-			i++
-		}
-		*/
-		
 		var arguments
 		if (this.options.coffee_script_path)
 			arguments = [this.options.coffee_script_path, this.to_relative_path(this.options.main_file_path)]
 		else
 			arguments = [this.to_relative_path(this.options.main_file_path)]
 
+		if (this.options.options)
+		{
+			arguments.push('options')
+			arguments.push(this.options.options)
+		}
+			
         debug('DEVSERVER: Starting server')
 
 		this.watch_paths()
